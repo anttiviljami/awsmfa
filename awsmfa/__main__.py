@@ -336,21 +336,8 @@ def find_mfa_for_user(user_specified_serial, botocore_session, boto3_session):
         return user_specified_serial
 
     iam = boto3_session.client('iam')
-    user = iam.get_user()
-    if user['User']['Arn'].endswith(':root'):
-        # The root user MFA device is not in the same way as non-root
-        # users, so we must find the root MFA devices using a different
-        # method than we do for normal users.
-        devices = boto3_session.resource('iam').CurrentUser().mfa_devices.all()
-        serials = (x.serial_number for x in devices)
-    else:
-        # Non-root users can have a restrictive policy that allows them
-        # only to list devices associated with their user but it requires
-        # using the low level IAM client to compose the proper request.
-        username = user['User']['UserName']
-        devices = botocore_session.create_client('iam').list_mfa_devices(
-            UserName=username)
-        serials = (x['SerialNumber'] for x in devices['MFADevices'])
+    devices = botocore_session.create_client('iam').list_mfa_devices()
+    serials = (x['SerialNumber'] for x in devices['MFADevices'])
 
     serials = list(serials)
     if not serials:
